@@ -1,0 +1,88 @@
+/* Welcome Label - Perfect */
+QLabel#welcome_label {
+    color: whitesmoke;
+    font-size: 45px;
+    font-weight: bold;
+    text-transform: uppercase;
+    letter-spacing: 3px;
+    margin-bottom: 30px;
+}
+
+QLabel#subtitle_label {
+    color: whitesmoke;
+    font-size: 25px;
+    font-weight: bold;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+QLabel#title_label {
+    color: white;
+    font-size: 18px;
+    font-weight: bold;
+    text-transform: uppercase;
+}
+
+QLabel#description_label {
+    color: white;
+    font-size: 14px;
+    padding-left: 10px;
+}
+
+QLabel#realtime_labels {
+    color: white;
+    font-size: 14px;
+    padding-left: 10px;
+}
+
+/* Video Label - Good */
+QLabel#realtime_video_label {
+    background-color: #222;
+    color: #fff;
+    border-radius: 8px;
+}
+
+/* Frame - Must use concrete colors */
+QFrame#button_frame {
+    background-color: #2E86AB;  /* Example color */
+    border-radius: 10px;
+    border: 2px solid #2E86AB;
+}
+
+QFrame#button_frame:hover {
+    background-color: transparent;
+}
+
+QPushButton#back_button {
+    padding: 8px;
+    min-width: 125px;
+    max-width: 125px;
+    min-height: 15px;
+    max-height: 15px;
+}
+
+QGroupBox#box_title::title {
+    color: whitesmoke;
+    font-weight: bold;
+}
+
+QLabel#drop_area_label {
+    border: 2px dashed #aaa;
+    border-radius: 10px;
+    padding: 30px;
+    color: whitesmoke;
+    font-size: 14px;
+}
+
+QPushButton#browse_button {
+    background-color: #4CAF50;
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 5px;
+    font-size: 13px;
+}
+
+QPushButton#browse_button: hover {
+    background-color: #45a049;
+}
