@@ -221,7 +221,7 @@ class VideoPlaybackWidget(QWidget):
         self.update_info_display()
             
         self.timer.timeout.connect(self.update_frame)
-        self.timer.start(1000 // self.fps)  # 50 FPS
+        self.timer.start(1000 // self.fps)  
         
         # Reset frame history
         self.frame_history.clear()
