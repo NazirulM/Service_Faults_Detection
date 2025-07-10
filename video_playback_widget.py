@@ -3,7 +3,7 @@ from PyQt5.QtWidgets import (
     QGroupBox, QHBoxLayout, QFileDialog, QSlider,
     QProgressDialog, QMessageBox, QApplication
 )
-from PyQt5.QtCore import Qt, QTimer, pyqtSignal, QThreadPool, QThread
+from PyQt5.QtCore import Qt, QTimer, pyqtSignal, QThreadPool, QThread, pyqtSlot
 from PyQt5.QtGui import QImage, QPixmap, QIcon, QFont, QDragEnterEvent, QDropEvent
 from utils.utility import ModelWarmupWorker
 from video_processer import FrameProcessorSignals, FrameProcessor
@@ -48,6 +48,8 @@ class VideoPlaybackWidget(QWidget):
         self.pending_frames = 0
         self.last_processed_frame = None
 
+        print("cv2 version: " + cv2.__version__)
+
         self.setupUI()
         
         # Video info tracking
@@ -66,6 +68,14 @@ class VideoPlaybackWidget(QWidget):
 
         # Model warmup flag
         self.model_ready = False
+
+        # --- NEW: PERSISTENT TRACKING STATE VARIABLES ---
+        self.persistent_tracked_objects = []
+        self.persistent_next_object_id = 0
+        self.persistent_vertical_service_line_kf = None # Store the KalmanFilter object itself
+        self.persistent_last_known_vertical_line = None # Stores the (x1, y1, x2, y2)
+        self.persistent_frames_without_line_detection = 0
+        # --- END NEW PERSISTENT TRACKING STATE VARIABLES ---
 
 
     def setupUI(self):
@@ -175,6 +185,14 @@ class VideoPlaybackWidget(QWidget):
 
         if self.cap:
             self.cap.release()
+
+        # --- NEW: Reset persistent state when loading a new video ---
+        self.persistent_tracked_objects = []
+        self.persistent_next_object_id = 0
+        self.persistent_vertical_service_line_kf = None
+        self.persistent_last_known_vertical_line = None
+        self.persistent_frames_without_line_detection = 0
+        # --- END NEW ---
 
         # Initialize dialog with proper parent and settings
         self.loading_dialog = QProgressDialog(
@@ -350,7 +368,11 @@ class VideoPlaybackWidget(QWidget):
             # Create and start processing task
             processor = FrameProcessor(frame, self.model, 
                                     self.threshold_slider.value(),
-                                    self.device, img_size=640)
+                                    self.device, img_size=640, current_tracked_objects=self.persistent_tracked_objects, # <-- Pass the current list
+                                    current_next_object_id=self.persistent_next_object_id,   # <-- Pass the current ID
+                                    current_vertical_service_line_kf=self.persistent_vertical_service_line_kf,
+                                    current_last_known_vertical_line=self.persistent_last_known_vertical_line,
+                                    current_frames_without_line_detection=self.persistent_frames_without_line_detection)
             processor.signals.finished.connect(self.on_processing_finished)
             processor.signals.error.connect(self.on_processing_error)
             self.threadpool.start(processor)
@@ -362,12 +384,24 @@ class VideoPlaybackWidget(QWidget):
             # Update info display
             self.update_info_display()
    
-
-    def on_processing_finished(self, processed_frame, confidence, bbox_count):
+    # --- NEW: SLOT TO RECEIVE AND UPDATE PERSISTENT STATE ---
+    @pyqtSlot(np.ndarray, float, int, list, int, object, tuple, int)
+    def on_processing_finished(self, processed_frame, confidence, bbox_count,
+                               updated_tracked_objects, updated_next_object_id,
+                               updated_line_kf, updated_last_known_line,
+                               updated_frames_without_line):
         self.pending_frames -= 1
         self.bounding_box_count = bbox_count
         self.last_processed_frame = (processed_frame, confidence, bbox_count)
         self.display_frame(processed_frame, confidence, bbox_count)
+
+        # --- CRITICAL: Update the persistent state with the results from the worker thread ---
+        self.persistent_tracked_objects = updated_tracked_objects
+        self.persistent_next_object_id = updated_next_object_id
+        self.persistent_vertical_service_line_kf = updated_line_kf
+        self.persistent_last_known_vertical_line = updated_last_known_line
+        self.persistent_frames_without_line_detection = updated_frames_without_line
+        # --- END CRITICAL UPDATE ---
 
     def on_processing_error(self, error_msg):
         self.pending_frames -= 1
@@ -416,7 +450,7 @@ class VideoPlaybackWidget(QWidget):
         elapsed = time.time() - self.start_time
         if elapsed > 0:
             self.measured_fps = self.frame_count / elapsed
-            self.fps_label.setText(f"FPS: {self.measured_fps:.1f}")
+            self.fps_label.setText(f"Playback FPS: {self.measured_fps:.1f}")
         
         # Update other info
         self.bbox_label.setText(f"Bounding Boxes: {self.bounding_box_count}")
